@@ -1,0 +1,6 @@
+denied-message: No such command.
+
+# Empty intentionally. Fill in the allowed command labels before enabling for players.
+# Labels only: no slash, namespace or arguments. Target command permissions still apply.
+# Include login/register if your server requires authentication commands.
+allowed-commands: []

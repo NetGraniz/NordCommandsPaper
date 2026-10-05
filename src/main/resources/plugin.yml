@@ -1,0 +1,20 @@
+name: NordCommands
+version: '1.1.0'
+main: com.nordfjell.nordcommandspaper.NordCommandsPaperPlugin
+api-version: '26.2'
+author: Nord Fjell
+description: Minimal Paper command visibility and execution filter for Nord Fjell.
+
+commands:
+  nordcommands:
+    description: Reload the NordCommands Paper configuration.
+    usage: /nordcommands <reload|health>
+    permission: nordcommands.admin
+
+permissions:
+  nordcommands.admin:
+    description: Allows reloading NordCommands.
+    default: op
+  nordcommands.bypass:
+    description: Bypasses command filtering.
+    default: op

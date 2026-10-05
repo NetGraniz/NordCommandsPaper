@@ -1,0 +1,19 @@
+name: CommandsTestProbe
+version: '1.0.0'
+main: com.nordfjell.nordcommandspaper.test.CommandsTestProbe
+api-version: '26.2'
+depend: [NordCommands, NordChat, NordFilter]
+commands:
+  cptest:
+    permission: commandstest.console
+  safe:
+    description: LOCAL synthetic allowed command.
+  unsafe:
+    description: LOCAL counter only; performs no administrative action.
+  guarded:
+    permission: commandstest.guarded
+permissions:
+  commandstest.console:
+    default: op
+  commandstest.guarded:
+    default: false
