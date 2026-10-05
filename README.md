@@ -1,5 +1,8 @@
 # NordCommands Paper 1.1.0
 
+> Release build and installation requirements: see [BUILDING.md](BUILDING.md).
+> Older local paths below describe historical test fixtures, not the release build.
+
 Paper 26.2 / Java 25 root-label command allowlist and client visibility filter.
 This is an additional routing barrier, not a replacement for command permissions.
 
