@@ -13,7 +13,7 @@ installed server's `plugins/NordCommands/config.yml` before allowing players to
 join. In particular, allow your authentication commands when needed. The template
 does not grant permissions and does not replace existing server configuration.
 
-Sources, build artifacts and tests stay on this network share. Synthetic Minecraft
+GitHub holds current sources and releases; production data stays private. Synthetic Minecraft
 runtimes run only on isolated LOCAL fixtures. Production deployment is a separate
 approved stopped-server operation.
 
@@ -41,8 +41,8 @@ is retained at deployment; the bundled default is not a reason to overwrite it.
 Management commands: /nordcommands health and /nordcommands reload.
 Reload is queued; wait for the explicit success/rejection message in console.
 
-Build with build.ps1 using isolated local Paper 26.2 libraries. It runs
-assertion-enabled tests and produces build/NordCommands-Paper-1.1.0.jar.
+Build with build.ps1 or mvn clean verify using Maven and JDK 25, without live server libraries.
+It runs assertion-enabled tests and produces target/NordCommands-Paper-1.2.0.jar.
 test-support/integration.cjs uses exact loopback-only local fixture paths and
 fresh synthetic data. --baseline selects the unchanged old JAR for controlled
 old-behavior reproduction. CommandsTestProbe is LOCAL-only and must never be
