@@ -2,6 +2,7 @@ name: NordCommands
 version: '${project.version}'
 main: com.nordfjell.nordcommandspaper.NordCommandsPaperPlugin
 api-version: '26.2'
+folia-supported: true
 author: Nord Fjell
 description: Minimal Paper command visibility and execution filter for Nord Fjell.
 

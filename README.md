@@ -1,9 +1,11 @@
-# NordCommands Paper 1.1.0
+# NordCommands 1.2.0
+
+One release JAR for Paper 26.2 and Folia 26.2: [compatibility notes](FOLIA.md).
 
 > Release build and installation requirements: see [BUILDING.md](BUILDING.md).
 > Older local paths below describe historical test fixtures, not the release build.
 
-Paper 26.2 / Java 25 root-label command allowlist and client visibility filter.
+Paper/Folia 26.2 / Java 25 root-label command allowlist and client visibility filter.
 This is an additional routing barrier, not a replacement for command permissions.
 
 The bundled `allowed-commands` list is intentionally empty. Configure it in the

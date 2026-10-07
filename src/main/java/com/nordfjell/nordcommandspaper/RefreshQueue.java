@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 final class RefreshQueue<T> {
     static final int MAX_PENDING = 4096, BUDGET = 8;
     private final ArrayDeque<T> queue = new ArrayDeque<>();
-    boolean replace(Collection<? extends T> entries) {
+    synchronized boolean replace(Collection<? extends T> entries) {
         queue.clear();
         boolean complete = true;
         for (T entry : entries) {
@@ -16,14 +16,14 @@ final class RefreshQueue<T> {
         }
         return complete;
     }
-    void drain(Consumer<T> action) {
+    synchronized void drain(Consumer<T> action) {
         for (int i = 0; i < BUDGET; i++) {
             T value = queue.pollFirst();
             if (value == null) return;
             action.accept(value);
         }
     }
-    int size() { return queue.size(); }
-    void clear() { queue.clear(); }
+    synchronized int size() { return queue.size(); }
+    synchronized void clear() { queue.clear(); }
 }
 

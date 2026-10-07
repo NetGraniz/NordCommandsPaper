@@ -8,7 +8,8 @@ import org.bukkit.event.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.server.TabCompleteEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -21,12 +22,12 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
     private volatile CommandSettings settings;
     private volatile SettingsLoader loader = CommandSettings::load;
     private final RefreshQueue<Player> refresh = new RefreshQueue<>();
-    private final Map<UUID, Long> noticeAt = new HashMap<>();
+    private final Map<UUID, Long> noticeAt = new ConcurrentHashMap<>();
     private ReloadGate<CommandSettings> reload;
     private CommandSender requester;
     private Path configPath;
-    private BukkitTask pump;
-    private boolean accepting;
+    private ScheduledTask pump;
+    private volatile boolean accepting;
 
     @Override public void onEnable() {
         saveDefaultConfig();
@@ -36,7 +37,7 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
         reload = new ReloadGate<>("NordCommands-policy-reader");
         accepting = true;
         getServer().getPluginManager().registerEvents(this, this);
-        pump = Bukkit.getScheduler().runTaskTimer(this, this::tick, 1, 1);
+        pump = Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, ignored -> tick(), 1, 1);
         getLogger().info("NordCommands 1.1.0: policy " + (settings == null ? "blocked" : "ready (" + settings.allowed().size() + " labels)") + ".");
     }
     @Override public void onDisable() {
@@ -46,6 +47,7 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
         refresh.clear(); noticeAt.clear(); requester = null; settings = null;
     }
     private void tick() {
+        synchronized (reload) {
         reload.drain(outcome -> {
             String message;
             if (outcome.value() != null) {
@@ -55,13 +57,15 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
                     getLogger().warning("Command-view refresh capped; execution policy already active.");
             } else message = "NordCommands reload rejected; previous policy retained. " + outcome.error();
             getLogger().info(message);
-            if (requester != null && (!(requester instanceof Player p)
-                    || (p.isOnline() && Bukkit.getPlayer(p.getUniqueId()) == p)))
-                requester.sendMessage(Component.text(message));
+            if (requester instanceof Player player) player.getScheduler().execute(this,() -> {
+                if (player.isOnline()) player.sendMessage(Component.text(message));
+            },null,1L);
+            else if (requester != null) requester.sendMessage(Component.text(message));
             requester = null;
         });
+        }
         refresh.drain(player -> {
-            if (player.isOnline() && Bukkit.getPlayer(player.getUniqueId()) == player) player.updateCommands();
+            player.getScheduler().execute(this,() -> { if (accepting && player.isOnline()) player.updateCommands(); },null,1L);
         });
     }
     private boolean allowed(Player player, String root) {
@@ -73,7 +77,7 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
     }
     private void enforce(PlayerCommandPreprocessEvent event) {
         // Synthetic/off-thread callbacks fail closed without invoking Player permissions.
-        if (!Bukkit.isPrimaryThread()) { event.setCancelled(true); return; }
+        if (!Bukkit.isOwnedByCurrentRegion(event.getPlayer())) { event.setCancelled(true); return; }
         if (allowed(event.getPlayer(), CommandInput.executionLabel(event.getMessage()))) return;
         event.setCancelled(true);
         long now = System.nanoTime();
@@ -93,13 +97,13 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onAvailableCommands(PlayerCommandSendEvent event) {
-        if (!Bukkit.isPrimaryThread()) { event.getCommands().clear(); return; }
+        if (!Bukkit.isOwnedByCurrentRegion(event.getPlayer())) { event.getCommands().clear(); return; }
         event.getCommands().removeIf(root -> !allowed(event.getPlayer(), CommandInput.label(root)));
     }
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onTabComplete(TabCompleteEvent event) {
         if (!(event.getSender() instanceof Player player)) return;
-        if (!Bukkit.isPrimaryThread() || !allowed(player, CommandInput.label(event.getBuffer()))) {
+        if (!Bukkit.isOwnedByCurrentRegion(player) || !allowed(player, CommandInput.label(event.getBuffer()))) {
             event.setCancelled(true); event.setCompletions(List.of());
         }
     }
@@ -107,7 +111,7 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
 
     @Override public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                                        @NotNull String label, @NotNull String[] args) {
-        if (!Bukkit.isPrimaryThread()) { getLogger().warning("Rejected asynchronous command-policy management."); return true; }
+        if (sender instanceof Player player && !Bukkit.isOwnedByCurrentRegion(player)) { getLogger().warning("Rejected off-region command-policy management."); return true; }
         if (!sender.hasPermission("nordcommands.admin")) {
             sender.sendMessage(Component.text("You do not have permission.")); return true;
         }
@@ -118,10 +122,12 @@ public final class NordCommandsPaperPlugin extends JavaPlugin implements Listene
                     + ", reload pending=" + reload.busy() + ", refresh pending=" + refresh.size())); return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
+            synchronized (reload) {
             if (reload.start(() -> loader.load(configPath))) {
                 requester = sender;
                 sender.sendMessage(Component.text("NordCommands reload queued."));
             } else sender.sendMessage(Component.text("NordCommands reload already pending."));
+            }
             return true;
         }
         sender.sendMessage(Component.text("Usage: /nordcommands <reload|health>")); return true;
